@@ -772,6 +772,7 @@ int control_finish (struct tunnel *t, struct call *c)
 #ifdef IP_ALLOCATION
         if (t->lns->assign_ip) {
             p->addr = get_addr (t->lns->range);
+#if 0
             if (!p->addr)
             {
                 set_error (p, ERROR_NORES, "No available IP address");
@@ -781,6 +782,14 @@ int control_finish (struct tunnel *t, struct call *c)
                 return -EINVAL;
             }
             reserve_addr (p->addr);
+#else
+            if (!p->addr)
+            {
+                          l2tp_log (LOG_DEBUG, "%s: Out of IP addresses on tunnel %d!\n",
+                               __FUNCTION__, t->tid);
+           }else
+        	   reserve_addr (p->addr);
+#endif
         }
         else
             p->addr = 0;
