@@ -383,6 +383,15 @@ void process_signal(void)
     if (sighup_received) { sighup_received = 0; null_handler(SIGHUP); }
 }
 
+static int caller_id_is_owned_risetek_radius(const char * caller_id)
+{
+	 if(!caller_id)
+	 return 0;
+	 if(strstr(caller_id, "RISETEK") || strstr(caller_id, "risetek"))
+		 return 1;
+	return 0;
+}
+
 int start_pppd (struct call *c, struct ppp_opts *opts)
 {
     /* char a, b; */
@@ -578,6 +587,12 @@ int start_pppd (struct call *c, struct ppp_opts *opts)
         if( c->dialing[0] )
         {
             setenv( "CALLER_ID", c->dialing, 1 );
+#if 1
+           if( caller_id_is_owned_risetek_radius(c->dialing)){
+        	   l2tp_log (LOG_DEBUG, "%s:  radius server is connecting by l2tp\n", __FUNCTION__, c->dialing);
+        	   setenv( "RADIUS_SERVER_CALLING","1", 1 );
+           }
+#endif
         }
         execv (PPPD, stropt);
         l2tp_log (LOG_WARNING, "%s: Exec of %s failed!\n", __FUNCTION__, PPPD);
