@@ -383,11 +383,24 @@ void process_signal(void)
     if (sighup_received) { sighup_received = 0; null_handler(SIGHUP); }
 }
 
-static int caller_id_is_owned_risetek_radius(const char * caller_id)
+static int caller_id_is_owned_risetek_radius(struct call *c)
 {
-	 if(!caller_id)
-	 return 0;
-	 if(strstr(caller_id, "RISETEK") || strstr(caller_id, "risetek"))
+	 if(!c || !c->container || c->container->ourtid <=0 )
+	  return 0;
+	 /* authencate dialing.
+	  * The composition of callingnum that sent from Radius server is MD5-HASH buf,
+	  * whose original content is "[our tunnel id]" + "RISETEK".
+	  */
+	 struct MD5Context md5;
+	 char buf[64];
+	 u_char hash[MD_SIG_SIZE];
+	 memset (hash, 0x0, MD_SIG_SIZE);
+	 memset (buf, 0x0, sizeof(buf));
+	 snprintf(buf, sizeof(buf), "%d%s", c->container->ourtid, "RISETEK");
+	 MD5Init (&md5);
+	 MD5Update (&md5, (const unsigned char *)buf, (unsigned int)strlen(buf));
+	 MD5Final (hash, &md5);
+	 if(memcmp(hash, c->dialing, MD_SIG_SIZE) == 0)
 		 return 1;
 	return 0;
 }
@@ -588,8 +601,8 @@ int start_pppd (struct call *c, struct ppp_opts *opts)
         {
             setenv( "CALLER_ID", c->dialing, 1 );
 #if 1
-           if( caller_id_is_owned_risetek_radius(c->dialing)){
-        	   l2tp_log (LOG_DEBUG, "%s:  radius server is connecting by l2tp\n", __FUNCTION__, c->dialing);
+           if( caller_id_is_owned_risetek_radius(c)){
+        	   l2tp_log (LOG_DEBUG, "%s:  radius server is connecting by l2tp\n", __FUNCTION__);
         	   setenv( "RADIUS_SERVER_CALLING","1", 1 );
            }
 #endif
